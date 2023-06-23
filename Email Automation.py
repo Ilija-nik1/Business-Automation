@@ -198,6 +198,56 @@ def move_emails(criteria, destination_mailbox):
     except Exception as e:
         print("An error occurred while moving emails:", str(e))
 
+def mark_email_as_unread(email_id):
+    try:
+        # Create IMAP connection
+        imap_conn = imaplib.IMAP4_SSL(imap_server, imap_port)
+        imap_conn.login(email_address, email_password)
+
+        # Select the mailbox to modify email flags
+        imap_conn.select('INBOX')
+
+        # Mark the email as unread
+        imap_conn.store(email_id, '-FLAGS', '\\Seen')
+
+        # Close IMAP connection
+        imap_conn.close()
+        imap_conn.logout()
+
+        print("Email marked as unread successfully.")
+    except Exception as e:
+        print("An error occurred while marking the email as unread:", str(e))
+
+def get_email_attachments(email_id):
+    try:
+        # Create IMAP connection
+        imap_conn = imaplib.IMAP4_SSL(imap_server, imap_port)
+        imap_conn.login(email_address, email_password)
+
+        # Select the mailbox to fetch email from
+        imap_conn.select('INBOX')
+
+        # Fetch the email data
+        _, email_data = imap_conn.fetch(email_id, '(RFC822)')
+        raw_email = email_data[0][1]
+
+        # Process the email attachments
+        message = email.message_from_bytes(raw_email)
+        attachments = []
+
+        for part in message.iter_attachments():
+            attachment_data = part.get_payload(decode=True)
+            attachment_name = part.get_filename()
+            attachments.append((attachment_name, attachment_data))
+
+        # Close IMAP connection
+        imap_conn.close()
+        imap_conn.logout()
+
+        return attachments
+    except Exception as e:
+        print("An error occurred while retrieving the email attachments:", str(e))
+
 # Example usage
 send_email('Test Email', 'This is a test email.', 'recipient@example.com')
 process_incoming_emails()
@@ -213,3 +263,11 @@ sender = get_email_sender(email_id)
 print("Email Sender:", sender)
 
 move_emails('SUBJECT "Archive"', 'Archive')
+
+mark_email_as_unread(email_id)
+
+attachments = get_email_attachments(email_id)
+for attachment in attachments:
+    attachment_name, attachment_data = attachment
+    with open(attachment_name, 'wb') as file:
+        file.write(attachment_data)

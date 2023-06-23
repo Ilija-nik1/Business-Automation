@@ -69,6 +69,24 @@ def count_rows(csv_filename):
         return row_count
 
 
+def extract_column(csv_filename, column_index):
+    # Extract a specific column from the CSV file
+    with open(csv_filename, 'r') as file:
+        reader = csv.reader(file)
+        column_data = [row[column_index] for row in reader if column_index < len(row)]
+        return column_data
+
+
+def search_value(csv_filename, search_column, search_value, return_column):
+    # Search for a specific value in a column and return the corresponding value from another column
+    with open(csv_filename, 'r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if search_column < len(row) and return_column < len(row) and row[search_column] == search_value:
+                return row[return_column]
+        return None
+
+
 if __name__ == '__main__':
     # Command line arguments
     parser = argparse.ArgumentParser(description='Web scraper')
@@ -78,6 +96,10 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--count', action='store_true', help='Count the number of rows')
     parser.add_argument('-fc', '--filter-column', type=int, help='Filter data by column index')
     parser.add_argument('-fv', '--filter-value', type=str, help='Filter data by column value')
+    parser.add_argument('-ec', '--extract-column', type=int, help='Extract a specific column')
+    parser.add_argument('-sc', '--search-column', type=int, help='Column index for search operation')
+    parser.add_argument('-sv', '--search-value', type=str, help='Value to search for')
+    parser.add_argument('-rc', '--return-column', type=int, help='Column index to return in search operation')
     args = parser.parse_args()
 
     # Logging configuration
@@ -98,3 +120,20 @@ if __name__ == '__main__':
     if args.count:
         row_count = count_rows(output_filename)
         print(f"Number of rows: {row_count}")
+
+    # Extract column if specified
+    if args.extract_column is not None:
+        column_index = args.extract_column
+        column_data = extract_column(output_filename, column_index)
+        print(f"Column {column_index}: {column_data}")
+
+    # Search for a value in a column and return another column's value if specified
+    if args.search_column is not None and args.search_value is not None and args.return_column is not None:
+        search_column_index = args.search_column
+        search_value = args.search_value
+        return_column_index = args.return_column
+        result = search_value(output_filename, search_column_index, search_value, return_column_index)
+        if result is not None:
+            print(f"Found: {result}")
+        else:
+            print("Value not found.")
