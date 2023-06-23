@@ -5,6 +5,7 @@ import sqlite3
 import logging
 import sys
 import csv
+from datetime import datetime
 
 # Configuration
 DATABASE_NAME = 'client_database.db'
@@ -23,13 +24,59 @@ def connect_to_database():
         logging.error("Error connecting to the database: %s", str(e))
         sys.exit("Error connecting to the database")
 
+# Create clients table if it doesn't exist
+def create_clients_table():
+    conn = connect_to_database()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS clients (
+                client_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                address TEXT NOT NULL,
+                amount_to_be_paid REAL NOT NULL
+            )
+        """)
+        conn.commit()
+    except sqlite3.Error as e:
+        logging.error("Error creating clients table: %s", str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+# Validate the name entered by the user
+def validate_name(name):
+    if not name:
+        print("Name cannot be empty.")
+        return False
+    return True
+
+# Validate the address entered by the user
+def validate_address(address):
+    if not address:
+        print("Address cannot be empty.")
+        return False
+    return True
+
+# Validate the amount entered by the user
+def validate_amount(amount):
+    try:
+        amount = float(amount)
+        if amount <= 0:
+            print("Amount must be greater than zero.")
+            return False
+    except ValueError:
+        print("Invalid amount. Please enter a number.")
+        return False
+    return True
+
 # Retrieve client data from the database based on client_id
 def retrieve_client_data(client_id):
     conn = connect_to_database()
     cursor = conn.cursor()
 
     try:
-        # Replace 'clients' with your actual table name and column names
         cursor.execute("SELECT name, address, amount_to_be_paid FROM clients WHERE client_id = ?", (client_id,))
         client_data = cursor.fetchone()
 
@@ -59,13 +106,19 @@ def generate_receipt(client_id):
         client_address = client_data['address']
         amount_to_be_paid = client_data['amount_to_be_paid']
 
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         receipt = """
         --------------- Receipt ---------------
+        Date: {}
         Client Name: {}
         Address: {}
         Amount to be Paid: ${}
         ---------------------------------------
-        """.format(client_name, client_address, amount_to_be_paid)
+        """.format(timestamp, client_name, client_address, amount_to_be_paid)
+
+        filename = get_receipt_filename(client_id)
+        with open(filename, 'w') as receipt_file:
+            receipt_file.write(receipt)
 
         print(receipt)
         logging.info("Receipt generated for client ID %s", client_id)
@@ -73,37 +126,19 @@ def generate_receipt(client_id):
         print("Client ID not found in the database.")
         logging.error("Client ID %s not found in the database", client_id)
 
-# Validate the client ID entered by the user
-def validate_client_id(client_id):
-    conn = connect_to_database()
-    cursor = conn.cursor()
+# Get a unique filename for each receipt
+def get_receipt_filename(client_id):
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    filename = "receipt_{}_{}.txt".format(client_id, timestamp)
+    return filename
 
-    try:
-        # Replace 'clients' with your actual table name and column names
-        cursor.execute("SELECT COUNT(*) FROM clients WHERE client_id = ?", (client_id,))
-        count = cursor.fetchone()[0]
-
-        if count > 0:
-            return True
-        else:
-            return False
-
-    except sqlite3.Error as e:
-        logging.error("Error validating client ID: %s", str(e))
-        return False
-
-    finally:
-        cursor.close()
-        conn.close()
-
-# User input function to get the client ID from the user
-def get_client_id_from_user():
-    while True:
-        client_id = input("Enter client ID: ")
-        if validate_client_id(client_id):
-            return client_id
-        else:
-            print("Invalid client ID. Please try again.")
+# Print client data in a formatted manner
+def print_client_data(client_data):
+    print("---- Client Data ----")
+    print("Name: {}".format(client_data['name']))
+    print("Address: {}".format(client_data['address']))
+    print("Amount to be Paid: {}".format(client_data['amount_to_be_paid']))
+    print("---------------------")
 
 # Update Client Data
 def update_client_data(client_id):
@@ -114,20 +149,19 @@ def update_client_data(client_id):
         client_data = retrieve_client_data(client_id)
         if client_data:
             print("Current Client Data:")
-            print("Name: {}".format(client_data['name']))
-            print("Address: {}".format(client_data['address']))
-            print("Amount to be Paid: {}".format(client_data['amount_to_be_paid']))
+            print_client_data(client_data)
 
             print("\nEnter new client data:")
             new_name = input("Name: ")
             new_address = input("Address: ")
             new_amount = input("Amount to be Paid: ")
 
-            cursor.execute("UPDATE clients SET name = ?, address = ?, amount_to_be_paid = ? WHERE client_id = ?",
-                           (new_name, new_address, new_amount, client_id))
-            conn.commit()
-            print("Client data updated successfully.")
-            logging.info("Client data updated for client ID %s", client_id)
+            if validate_name(new_name) and validate_address(new_address) and validate_amount(new_amount):
+                cursor.execute("UPDATE clients SET name = ?, address = ?, amount_to_be_paid = ? WHERE client_id = ?",
+                               (new_name, new_address, new_amount, client_id))
+                conn.commit()
+                print("Client data updated successfully.")
+                logging.info("Client data updated for client ID %s", client_id)
         else:
             print("Client ID not found in the database.")
             logging.error("Client ID %s not found in the database", client_id)
@@ -149,11 +183,12 @@ def add_new_client():
         new_address = input("Enter client address: ")
         new_amount = input("Enter amount to be paid: ")
 
-        cursor.execute("INSERT INTO clients (name, address, amount_to_be_paid) VALUES (?, ?, ?)",
-                       (new_name, new_address, new_amount))
-        conn.commit()
-        print("New client added successfully.")
-        logging.info("New client added: %s", new_name)
+        if validate_name(new_name) and validate_address(new_address) and validate_amount(new_amount):
+            cursor.execute("INSERT INTO clients (name, address, amount_to_be_paid) VALUES (?, ?, ?)",
+                           (new_name, new_address, new_amount))
+            conn.commit()
+            print("New client added successfully.")
+            logging.info("New client added: %s", new_name)
 
     except sqlite3.Error as e:
         logging.error("Error adding new client: %s", str(e))
@@ -171,9 +206,7 @@ def delete_client(client_id):
         client_data = retrieve_client_data(client_id)
         if client_data:
             print("Client Data:")
-            print("Name: {}".format(client_data['name']))
-            print("Address: {}".format(client_data['address']))
-            print("Amount to be Paid: {}".format(client_data['amount_to_be_paid']))
+            print_client_data(client_data)
 
             confirm = input("\nAre you sure you want to delete this client? (y/n): ")
             if confirm.lower() == 'y':
@@ -286,33 +319,42 @@ def main():
         print("5. View All Clients")
         print("6. Search Client by Name")
         print("7. Export Clients to CSV")
-        print("0. Exit")
-        choice = input("Enter your choice: ")
+        print("8. Exit")
+
+        choice = input("Enter your choice (1-8): ")
 
         if choice == '1':
-            client_id = get_client_id_from_user()
+            client_id = input("Enter client ID: ")
             generate_receipt(client_id)
+
         elif choice == '2':
-            client_id = get_client_id_from_user()
+            client_id = input("Enter client ID: ")
             update_client_data(client_id)
+
         elif choice == '3':
             add_new_client()
+
         elif choice == '4':
-            client_id = get_client_id_from_user()
+            client_id = input("Enter client ID: ")
             delete_client(client_id)
+
         elif choice == '5':
             view_all_clients()
+
         elif choice == '6':
-            name = input("Enter the name to search: ")
+            name = input("Enter client name: ")
             search_client_by_name(name)
+
         elif choice == '7':
             export_clients_to_csv()
-        elif choice == '0':
-            print("Exiting the program.")
-            break
-        else:
-            print("Invalid choice. Please try again.")
 
-# Execute the main function
+        elif choice == '8':
+            print("Exiting...")
+            break
+
+        else:
+            print("Invalid choice. Please enter a valid option (1-8).")
+
 if __name__ == '__main__':
+    create_clients_table()
     main()
