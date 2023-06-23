@@ -33,6 +33,7 @@ class App(tk.Frame):
         self.master = master
         self.pack()
         self.create_widgets()
+        self.refresh_rates()
 
     def create_widgets(self):
         self.amount_label = tk.Label(self, text="Amount:")
@@ -60,6 +61,9 @@ class App(tk.Frame):
         self.result_label = tk.Label(self, text="")
         self.result_label.grid(row=3, column=1)
 
+        self.update_button = tk.Button(self, text="Update Currencies", command=self.update_currencies)
+        self.update_button.grid(row=4, column=0, columnspan=2)
+
     def convert(self):
         amount_str = self.amount_entry.get()
         if not amount_str:
@@ -78,11 +82,30 @@ class App(tk.Frame):
             self.result_label.config(text="Please select different currencies")
             return
 
-        api_url = f"https://api.exchangerate-api.com/v4/latest/{from_currency}"
-        converter = CurrencyConverter(api_url)
+        converter = CurrencyConverter(f"https://api.exchangerate-api.com/v4/latest/{from_currency}")
         converted_amount = converter.convert(from_currency, to_currency, amount)
 
         self.result_label.config(text=f"{self.currencies[to_currency]}{converted_amount:.2f}")
+
+    def update_currencies(self):
+        response = requests.get("https://api.exchangerate-api.com/v4/latest/USD")
+        if response.status_code == 200:
+            data = response.json()
+            self.currencies = data["rates"]
+            self.from_menu['menu'].delete(0, 'end')
+            self.to_menu['menu'].delete(0, 'end')
+            for code in self.currencies:
+                self.from_menu['menu'].add_command(label=code + " " + self.currencies[code], command=tk._setit(self.from_var, code))
+                self.to_menu['menu'].add_command(label=code + " " + self.currencies[code], command=tk._setit(self.to_var, code))
+            self.from_var.set("USD")
+            self.to_var.set("EUR")
+            self.result_label.config(text="Currencies updated successfully")
+        else:
+            self.result_label.config(text="Failed to update currencies")
+
+    def refresh_rates(self):
+        self.update_currencies()
+        self.master.after(3600000, self.refresh_rates)
 
 root = tk.Tk()
 app = App(master=root)

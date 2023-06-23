@@ -51,12 +51,14 @@ def scrape_data(url, output_filename):
     logging.info('Data saved to %s', output_filename)
 
 
-def print_data(csv_filename):
+def print_data(csv_filename, filter_column=None, filter_value=None):
     # Read data from CSV file and print it
     with open(csv_filename, 'r') as file:
         reader = csv.reader(file)
         for row in reader:
-            print(row)
+            if filter_column is None or filter_value is None or \
+                    (filter_column < len(row) and row[filter_column] == filter_value):
+                print(row)
 
 
 def count_rows(csv_filename):
@@ -74,6 +76,8 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', type=str, default='data.csv', help='Output filename')
     parser.add_argument('-p', '--print', action='store_true', help='Print the data after scraping')
     parser.add_argument('-c', '--count', action='store_true', help='Count the number of rows')
+    parser.add_argument('-fc', '--filter-column', type=int, help='Filter data by column index')
+    parser.add_argument('-fv', '--filter-value', type=str, help='Filter data by column value')
     args = parser.parse_args()
 
     # Logging configuration
@@ -88,7 +92,7 @@ if __name__ == '__main__':
 
     # Print data if specified
     if args.print:
-        print_data(output_filename)
+        print_data(output_filename, args.filter_column, args.filter_value)
 
     # Count rows if specified
     if args.count:

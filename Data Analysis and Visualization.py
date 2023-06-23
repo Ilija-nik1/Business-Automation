@@ -48,11 +48,24 @@ def calculate_correlation(data, column1, column2):
     correlation = data[column1].corr(data[column2])
     return correlation
 
+def plot_heatmap(data):
+    correlation_matrix = data.corr()
+    sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm")
+    plt.title("Correlation Heatmap")
+    plt.show()
+
+def calculate_median(data, column_name):
+    if column_name not in data.columns:
+        print("Error: Column not found in the data.")
+        return None
+    median_value = data[column_name].median()
+    return median_value
+
 # Read the data from a CSV file
 data = read_data('data.csv')
 
 # Perform data analysis and visualization
-# Example: Calculate the mean, plot a histogram, generate summary statistics, plot a boxplot, plot a scatter plot, and calculate correlation
+# Example: Calculate the mean, plot a histogram, generate summary statistics, plot a boxplot, plot a scatter plot, calculate correlation, plot a correlation heatmap, calculate median
 
 if data is not None:
     # Select the column to analyze
@@ -82,3 +95,11 @@ if data is not None:
     correlation = calculate_correlation(data, x_column, y_column)
     if correlation is not None:
         print(f"Correlation between {x_column} and {y_column}: {correlation}")
+
+    # Plot a correlation heatmap
+    plot_heatmap(data)
+
+    # Calculate the median
+    median_value = calculate_median(data, column_name)
+    if median_value is not None:
+        print(f"Median: {median_value}")

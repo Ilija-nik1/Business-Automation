@@ -125,8 +125,91 @@ def delete_emails(criteria):
     except Exception as e:
         print("An error occurred while deleting emails:", str(e))
 
+def get_email_body(email_id):
+    try:
+        # Create IMAP connection
+        imap_conn = imaplib.IMAP4_SSL(imap_server, imap_port)
+        imap_conn.login(email_address, email_password)
+
+        # Select the mailbox to fetch email from
+        imap_conn.select('INBOX')
+
+        # Fetch the email data
+        _, email_data = imap_conn.fetch(email_id, '(RFC822)')
+        raw_email = email_data[0][1].decode('utf-8')
+
+        # Process the email body
+        message = email.message_from_string(raw_email)
+        if message.is_multipart():
+            # If the email has multiple parts, iterate through them
+            for part in message.get_payload():
+                if part.get_content_type() == 'text/plain':
+                    return part.get_payload()
+        else:
+            # If the email is not multipart, return the body directly
+            return message.get_payload()
+    except Exception as e:
+        print("An error occurred while retrieving the email body:", str(e))
+
+def get_email_sender(email_id):
+    try:
+        # Create IMAP connection
+        imap_conn = imaplib.IMAP4_SSL(imap_server, imap_port)
+        imap_conn.login(email_address, email_password)
+
+        # Select the mailbox to fetch email from
+        imap_conn.select('INBOX')
+
+        # Fetch the email data
+        _, email_data = imap_conn.fetch(email_id, '(RFC822)')
+        raw_email = email_data[0][1].decode('utf-8')
+
+        # Process the email sender
+        message = email.message_from_string(raw_email)
+        return message['From']
+    except Exception as e:
+        print("An error occurred while retrieving the email sender:", str(e))
+
+def move_emails(criteria, destination_mailbox):
+    try:
+        # Create IMAP connection
+        imap_conn = imaplib.IMAP4_SSL(imap_server, imap_port)
+        imap_conn.login(email_address, email_password)
+
+        # Select the source mailbox to move emails from
+        imap_conn.select('INBOX')
+
+        # Search for emails based on criteria
+        _, data = imap_conn.search(None, criteria)
+
+        # Iterate through email IDs and move emails
+        for email_id in data[0].split():
+            imap_conn.copy(email_id, destination_mailbox)
+            imap_conn.store(email_id, '+FLAGS', '\\Deleted')
+
+        # Expunge deleted emails
+        imap_conn.expunge()
+
+        # Close IMAP connection
+        imap_conn.close()
+        imap_conn.logout()
+
+        print("Emails moved successfully.")
+    except Exception as e:
+        print("An error occurred while moving emails:", str(e))
+
 # Example usage
 send_email('Test Email', 'This is a test email.', 'recipient@example.com')
 process_incoming_emails()
 search_emails('SUBJECT "Important"')
 delete_emails('SUBJECT "Spam"')
+
+# Additional function usage
+email_id = '12345'  # Replace with the actual email ID
+body = get_email_body(email_id)
+print("Email Body:", body)
+
+sender = get_email_sender(email_id)
+print("Email Sender:", sender)
+
+move_emails('SUBJECT "Archive"', 'Archive')
