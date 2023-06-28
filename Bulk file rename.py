@@ -52,7 +52,7 @@ def bulk_rename(directory, prefix, extension_filter=None, preview=False, interac
                     except Exception as e:
                         print(f"Error renaming {filename}: {str(e)}")
                 counter += 1
-    
+
     if not preview and len(renamed_files) > 0:
         print("\nSummary:")
         for old_name, new_name in renamed_files:
@@ -64,6 +64,30 @@ def bulk_rename(directory, prefix, extension_filter=None, preview=False, interac
             restore_files(directory, backup_directory)
         shutil.rmtree(backup_directory)
 
+def filter_files_by_size(directory, size_limit):
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        if os.path.isfile(file_path):
+            file_size = os.path.getsize(file_path)
+            if file_size <= size_limit:
+                print(f"Filtered: {filename} (Size: {file_size} bytes)")
+
+def sort_files(directory):
+    file_list = os.listdir(directory)
+    file_list.sort()
+    for filename in file_list:
+        file_path = os.path.join(directory, filename)
+        if os.path.isfile(file_path):
+            print(filename)
+
+def count_files(directory):
+    count = 0
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        if os.path.isfile(file_path):
+            count += 1
+    print(f"Total files: {count}")
+
 # Example usage
 directory_path = "/path/to/directory"  # Replace with the target directory path
 new_prefix = "new_prefix"  # Replace with the desired prefix
@@ -73,3 +97,8 @@ interactive_mode = True  # Set to True to prompt for user confirmation in case o
 backup_mode = True  # Set to True to create a backup of the original files, or False to skip the backup.
 
 bulk_rename(directory_path, new_prefix, file_extension_filter, preview_mode, interactive_mode, backup_mode)
+
+# Additional function usage
+filter_files_by_size(directory_path, 1024)  # Filter files smaller than or equal to 1KB
+sort_files(directory_path)  # Sort files in the directory
+count_files(directory_path)  # Count the total number of files in the directory
