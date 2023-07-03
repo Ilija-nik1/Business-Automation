@@ -87,6 +87,22 @@ def search_value(csv_filename, search_column, search_value, return_column):
         return None
 
 
+def sort_data(csv_filename, sort_column, ascending=True):
+    # Sort the data in the CSV file based on a specific column
+    with open(csv_filename, 'r') as file:
+        reader = csv.reader(file)
+        header = next(reader)  # Read the header row
+        sorted_data = sorted(reader, key=lambda row: row[sort_column], reverse=not ascending)
+
+    # Write the sorted data back to the CSV file
+    with open(csv_filename, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(header)  # Write the header row back to the file
+        writer.writerows(sorted_data)
+
+    logging.info('Data sorted and saved to %s', csv_filename)
+
+
 if __name__ == '__main__':
     # Command line arguments
     parser = argparse.ArgumentParser(description='Web scraper')
@@ -100,6 +116,8 @@ if __name__ == '__main__':
     parser.add_argument('-sc', '--search-column', type=int, help='Column index for search operation')
     parser.add_argument('-sv', '--search-value', type=str, help='Value to search for')
     parser.add_argument('-rc', '--return-column', type=int, help='Column index to return in search operation')
+    parser.add_argument('-sc', '--sort-column', type=int, help='Column index for sorting operation')
+    parser.add_argument('-sd', '--sort-descending', action='store_true', help='Sort data in descending order (default is ascending)')
     args = parser.parse_args()
 
     # Logging configuration
@@ -137,3 +155,9 @@ if __name__ == '__main__':
             print(f"Found: {result}")
         else:
             print("Value not found.")
+
+    # Sort data if specified
+    if args.sort_column is not None:
+        sort_column_index = args.sort_column
+        sort_ascending = not args.sort_descending
+        sort_data(output_filename, sort_column_index, sort_ascending)
