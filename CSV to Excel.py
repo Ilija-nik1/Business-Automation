@@ -19,7 +19,7 @@ COLUMNS_TO_APPLY_FUNCTION = ["column1", "column2"]
 # Utility functions
 def read_csv(csv_file):
     try:
-        data_frame = pd.read_csv(csv_file, header=None, skip_blank_lines=True)
+        data_frame = pd.read_csv(csv_file, skip_blank_lines=True)
         return data_frame
     except FileNotFoundError:
         print(f"Error: File '{csv_file}' not found.")
@@ -36,77 +36,67 @@ def save_to_excel(data_frame, excel_file):
         print(f"Error: Unable to save data to '{excel_file}': {e}")
 
 # Data processing functions
-def remove_duplicates_and_save(csv_file, excel_file):
+def process_and_save_csv(csv_file, excel_file, functions):
     data_frame = read_csv(csv_file)
     if data_frame is not None:
-        data_frame.drop_duplicates(inplace=True)
+        for function in functions:
+            data_frame = function(data_frame)
         save_to_excel(data_frame, excel_file)
 
-def sort_and_save(csv_file, excel_file, sort_column):
-    data_frame = read_csv(csv_file)
-    if data_frame is not None:
-        if sort_column not in data_frame.columns:
-            print(f"Error: Column '{sort_column}' does not exist in the CSV file.")
-        else:
-            sorted_data = data_frame.sort_values(by=sort_column)
-            save_to_excel(sorted_data, excel_file)
+def remove_duplicates(data_frame):
+    data_frame.drop_duplicates(inplace=True)
+    return data_frame
 
-def filter_and_save(csv_file, excel_file, filter_column, filter_value):
-    data_frame = read_csv(csv_file)
-    if data_frame is not None:
-        if filter_column not in data_frame.columns:
-            print(f"Error: Column '{filter_column}' does not exist in the CSV file.")
-        else:
-            filtered_data = data_frame[data_frame[filter_column] == filter_value]
-            save_to_excel(filtered_data, excel_file)
+def sort_data(data_frame):
+    if SORT_COLUMN_NAME in data_frame.columns:
+        return data_frame.sort_values(by=SORT_COLUMN_NAME)
+    else:
+        print(f"Error: Column '{SORT_COLUMN_NAME}' does not exist in the CSV file.")
+        return data_frame
 
-def aggregate_and_save(csv_file, excel_file, group_by_columns, aggregation_column, aggregation_function):
-    data_frame = read_csv(csv_file)
-    if data_frame is not None:
-        columns_exist = all(column in data_frame.columns for column in group_by_columns + [aggregation_column])
-        if not columns_exist:
-            print("Error: One or more columns do not exist in the CSV file.")
-        else:
-            aggregated_data = data_frame.groupby(group_by_columns)[aggregation_column].agg(aggregation_function).reset_index()
-            save_to_excel(aggregated_data, excel_file)
+def filter_data(data_frame):
+    if FILTER_COLUMN_NAME in data_frame.columns:
+        return data_frame[data_frame[FILTER_COLUMN_NAME] == FILTER_VALUE]
+    else:
+        print(f"Error: Column '{FILTER_COLUMN_NAME}' does not exist in the CSV file.")
+        return data_frame
 
-def merge_and_save(csv_files, excel_file):
+def aggregate_data(data_frame):
+    if all(column in data_frame.columns for column in GROUP_BY_COLUMNS + [AGGREGATION_COLUMN]):
+        return data_frame.groupby(GROUP_BY_COLUMNS)[AGGREGATION_COLUMN].agg(AGGREGATION_FUNCTION).reset_index()
+    else:
+        print("Error: One or more columns do not exist in the CSV file.")
+        return data_frame
+
+def merge_csv_files(csv_files):
     data_frames = [read_csv(csv_file) for csv_file in csv_files]
-    data_frames = [df for df in data_frames if df is not None]  # Remove any None values
+    data_frames = [df for df in data_frames if df is not None]
     if data_frames:
-        merged_data = pd.concat(data_frames)
-        save_to_excel(merged_data, excel_file)
+        return pd.concat(data_frames)
+    else:
+        return None
 
-def rename_columns_and_save(csv_file, excel_file, column_names):
-    data_frame = read_csv(csv_file)
-    if data_frame is not None:
-        data_frame.rename(columns=column_names, inplace=True)
-        save_to_excel(data_frame, excel_file)
+def rename_columns(data_frame):
+    data_frame.rename(columns=COLUMN_NAMES_TO_RENAME, inplace=True)
+    return data_frame
 
-def apply_function_and_save(csv_file, excel_file, columns, function):
-    data_frame = read_csv(csv_file)
-    if data_frame is not None:
-        data_frame[columns] = data_frame[columns].apply(function)
-        save_to_excel(data_frame, excel_file)
+def apply_function(data_frame):
+    data_frame[COLUMNS_TO_APPLY_FUNCTION] = data_frame[COLUMNS_TO_APPLY_FUNCTION].apply(lambda x: x.upper())
+    return data_frame
 
 if __name__ == '__main__':
-    # Call the function to rename the columns and save the modified data to Excel
-    rename_columns_and_save(CSV_FILE_PATH, EXCEL_FILE_PATH, COLUMN_NAMES_TO_RENAME)
+    functions_to_apply = [
+        rename_columns,
+        remove_duplicates,
+        apply_function,
+        sort_data,
+        filter_data,
+        aggregate_data
+    ]
 
-    # Call the function to remove duplicates and save the modified data to Excel
-    remove_duplicates_and_save(CSV_FILE_PATH, EXCEL_FILE_PATH)
+    merged_data_frame = merge_csv_files(CSV_FILES_TO_MERGE)
 
-    # Call the function to apply a function to columns and save the modified data to Excel
-    apply_function_and_save(CSV_FILE_PATH, EXCEL_FILE_PATH, COLUMNS_TO_APPLY_FUNCTION, lambda x: x.upper())
+    if merged_data_frame is not None:
+        functions_to_apply.append(lambda df: merged_data_frame)
 
-    # Call the function to sort the data and save it to Excel
-    sort_and_save(CSV_FILE_PATH, EXCEL_FILE_PATH, SORT_COLUMN_NAME)
-
-    # Call the function to filter the data and save it to Excel
-    filter_and_save(CSV_FILE_PATH, EXCEL_FILE_PATH, FILTER_COLUMN_NAME, FILTER_VALUE)
-
-    # Call the function to aggregate the data and save it to Excel
-    aggregate_and_save(CSV_FILE_PATH, EXCEL_FILE_PATH, GROUP_BY_COLUMNS, AGGREGATION_COLUMN, AGGREGATION_FUNCTION)
-
-    # Call the function to merge the CSV files and save the merged data to Excel
-    merge_and_save(CSV_FILES_TO_MERGE, EXCEL_FILE_PATH)
+    process_and_save_csv(CSV_FILE_PATH, EXCEL_FILE_PATH, functions_to_apply)
